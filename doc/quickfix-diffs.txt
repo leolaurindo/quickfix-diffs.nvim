@@ -1,0 +1,92 @@
+*quickfix-diffs.nvim*  Native quickfix lists from Git diffs
+
+=============================================================================
+CONTENTS                                                       *quickfix-diffs-contents*
+
+                 |quickfix-diffs-installation|
+                 |quickfix-diffs-setup|
+                 |quickfix-diffs-commands|
+                 |quickfix-diffs-api|
+
+Part of quickfix-kit.nvim:
+https://github.com/leolaurindo/quickfix-kit.nvim
+
+INSTALLATION                                                   *quickfix-diffs-installation*
+
+lazy.nvim: >
+  { "leolaurindo/quickfix-diffs.nvim", opts = {} }
+<
+
+vim.pack (Neovim 0.12+): >
+  vim.pack.add({ "https://github.com/leolaurindo/quickfix-diffs.nvim" }, { load = true })
+  require("quickfix_diffs").setup()
+<
+
+No runtime dependencies.
+
+SETUP                                                          *quickfix-diffs-setup*
+
+  require("quickfix_diffs").setup({ open = true, full_diff = false })
+
+The default creates one native item per changed hunk. full_diff = true creates
+one item per file and stores the complete patch in item.text. Untracked files
+are excluded.
+
+COMMANDS                                                       *quickfix-diffs-commands*
+
+                                                          *QuickfixDiffs*
+:QuickfixDiffs  Index to worktree hunks.
+                                                     *QuickfixDiffsFull*
+:QuickfixDiffsFull  Index to worktree, full patch per file.
+                                                     *QuickfixDiffsHEAD*
+:QuickfixDiffsHEAD  HEAD to worktree.
+                                                    *QuickfixDiffsStaged*
+:QuickfixDiffsStaged  HEAD to index.
+                                                       *QuickfixDiffsRef*
+:QuickfixDiffsRef {ref}  Ref to worktree.
+                                                    *QuickfixDiffsCompare*
+:QuickfixDiffsCompare {spec}  A Git revision or range.
+:QuickfixDiffsCompare {base} {target}  Compare two Git endpoints.
+
+                                                     *QuickfixDiffsRange*
+:QuickfixDiffsRange  Alias for |QuickfixDiffsCompare|.
+
+                                                *QuickfixDiffsFromDiffer*
+:QuickfixDiffsFromDiffer  Compare the active local Differ view.
+
+Endpoints may be Git revisions, index, or worktree where supported. Pull-request
+refs can be compared when already available locally; this plugin does not fetch
+them.
+
+LUA API                                                       *quickfix-diffs-api*
+
+  local diffs = require("quickfix_diffs")
+  diffs.open({ base = "index", target = "worktree" })
+  diffs.open({ base = "HEAD", target = "worktree" })
+  diffs.open({ base = "HEAD", target = "index" })
+  diffs.open({ base = "main", target = "worktree" })
+  diffs.open({ base = "main", target = "HEAD" })
+  diffs.open({ base = "main", target = "HEAD", merge_base = true })
+
+The canonical API compares base to target. mode is a convenience wrapper with
+values unstaged, head, or staged. spec accepts a
+revision, A..B, A...B, or a two-revision array. Successful non-empty runs append
+a new list and return its native target. Metadata is stored in
+item.user_data.quickfix_diffs.
+
+The optional Differ integration reads the active local Git comparison: >
+  local items, err, target = diffs.open_from_differ({ tab = true })
+<
+`tab = true` creates the list and opens it with |:tab| |copen|. Differ views
+backed only by remote PR blobs are not supported because this plugin uses local
+Git objects.
+
+Review integration is optional:
+https://github.com/leolaurindo/quickfix-review.nvim
+
+See also:
+- |quickfix-actions.nvim|  Native list actions
+- |quickfix-review.nvim|  Notes on diff rows
+
+==============================================================================
+ vim:tw=78:ts=8:ft=help:norl:
