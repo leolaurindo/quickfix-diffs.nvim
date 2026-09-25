@@ -6,6 +6,9 @@ revision metadata for navigation and review. Requires Neovim 0.10+.
 Part of the [quickfix-kit.nvim](https://github.com/leolaurindo/quickfix-kit.nvim)
 package.
 
+It also pairs great with `]q` and `[q` navigation plus inline diff renders, such as 
+[inline-diff.nvim](https://github.com/leolaurindo/inline-diff.nvim), [mini.diff](https://github.com/nvim-mini/mini.diff) and others.
+
 ## Installation
 
 With lazy.nvim:
