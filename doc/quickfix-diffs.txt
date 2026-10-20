@@ -30,12 +30,16 @@ SETUP                                                          *quickfix-diffs-s
 
 The default creates one native item per changed hunk. full_diff = true creates
 one item per file and stores the complete patch in item.text. Untracked files
-are excluded.
+are excluded from |:QuickfixDiffs|; use |:QuickfixDiffsWithUntracked| to include
+non-ignored untracked files without changing the index.
 
 COMMANDS                                                       *quickfix-diffs-commands*
 
                                                           *QuickfixDiffs*
 :QuickfixDiffs  Index to worktree hunks.
+                                          *QuickfixDiffsWithUntracked*
+:QuickfixDiffsWithUntracked  Index to worktree, including non-ignored untracked
+                              files.
                                                      *QuickfixDiffsFull*
 :QuickfixDiffsFull  Index to worktree, full patch per file.
                                                      *QuickfixDiffsHEAD*
