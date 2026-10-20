@@ -35,13 +35,16 @@ require("quickfix_diffs").setup({
 
 The default is one item per changed hunk. `full_diff = true` creates one item
 per changed file and stores the complete patch in `item.text`. Untracked files
-are excluded. Each non-empty run appends a new list to quickfix history.
+are excluded from `:QuickfixDiffs`; use `:QuickfixDiffsWithUntracked` to include
+non-ignored untracked files without changing the index. Each non-empty run appends
+a new list to quickfix history.
 
 ## Commands
 
 | Command | Comparison |
 | --- | --- |
 | `:QuickfixDiffs` | index → worktree hunks |
+| `:QuickfixDiffsWithUntracked` | index → worktree, including non-ignored untracked files |
 | `:QuickfixDiffsFull` | index → worktree, full patch per file |
 | `:QuickfixDiffsHEAD` | HEAD → worktree |
 | `:QuickfixDiffsStaged` | HEAD → index |

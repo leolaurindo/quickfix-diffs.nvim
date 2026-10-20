@@ -19,10 +19,11 @@ local root = vim.fn.tempname()
 vim.fn.mkdir(root, "p")
 local file = root .. "/example.txt"
 vim.fn.writefile({ "one", "two", "three" }, file)
+vim.fn.writefile({ "ignored.txt" }, root .. "/.gitignore")
 run(root, { "init", "-q" })
 run(root, { "config", "user.email", "test@example.com" })
 run(root, { "config", "user.name", "Test" })
-run(root, { "add", "example.txt" })
+run(root, { "add", "example.txt", ".gitignore" })
 run(root, { "commit", "-qm", "initial" })
 run(root, { "branch", "base" })
 
@@ -36,6 +37,7 @@ vim.cmd("edit " .. vim.fn.fnameescape(file))
 
 diffs.setup({ open = false })
 check(vim.fn.exists(":QuickfixDiffs") == 2)
+check(vim.fn.exists(":QuickfixDiffsWithUntracked") == 2)
 check(vim.fn.exists(":QuickfixDiffsFull") == 2)
 check(vim.fn.exists(":QuickfixDiffsHEAD") == 2)
 check(vim.fn.exists(":QuickfixDiffsAll") == 0)
@@ -98,6 +100,22 @@ check(#unstaged == 1 and unstaged[1].lnum == 4, "unstaged hunk did not target wo
 check(vim.fn.getqflist({ id = staged_target.id, items = 1 }).items[1].user_data.consumer.note == "preserve")
 check(unstaged[1].user_data.quickfix_diffs.old.count == 0)
 check(unstaged[1].end_lnum == 4)
+
+vim.fn.writefile({ "new file" }, root .. "/new.txt")
+vim.fn.writefile({ "hidden file" }, root .. "/.hidden")
+vim.fn.writefile({ "ignored file" }, root .. "/ignored.txt")
+local staged_names = run(root, { "diff", "--cached", "--name-only" })
+local with_untracked = check(diffs.open({ mode = "unstaged_with_untracked", full_diff = true }))
+check(#with_untracked == 3, "untracked mode returned " .. #with_untracked .. " items")
+local paths = {}
+for _, item in ipairs(with_untracked) do
+	paths[item.user_data.quickfix_diffs.path] = item
+end
+check(paths["new.txt"] and paths[".hidden"], "untracked additions are missing")
+check(not paths["ignored.txt"], "ignored file was included")
+check(paths["new.txt"].user_data.quickfix_diffs.hunks[1].new.count == 1)
+check(paths["new.txt"].text:find("+new file", 1, true))
+check(run(root, { "diff", "--cached", "--name-only" }) == staged_names, "untracked mode modified the index")
 
 local full = check(diffs.open({ mode = "unstaged", full_diff = true }))
 check(#full == 1 and full[1].text:find("+four", 1, true), "full diff was not stored in the item")

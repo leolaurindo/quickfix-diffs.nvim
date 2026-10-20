@@ -22,6 +22,10 @@ local modes = {
 		args = { "--cached" },
 		title = "Git staged changes",
 	},
+	unstaged_with_untracked = {
+		args = {},
+		title = "Git unstaged changes with untracked files",
+	},
 }
 
 local function notify(message, level)
@@ -85,7 +89,7 @@ local function diff_args(opts)
 	return { base, target }, opts.title or ("Git diff: " .. base .. " -> " .. target)
 end
 
-local function changed_files(root, args)
+local function changed_files(root, args, include_untracked)
 	local command_args = { "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--name-only", "-z" }
 	vim.list_extend(command_args, args)
 	vim.list_extend(command_args, { "--" })
@@ -97,17 +101,35 @@ local function changed_files(root, args)
 	for name in output:gmatch("([^%z]+)%z") do
 		names[#names + 1] = name
 	end
-	return names
+	local untracked = {}
+	if include_untracked then
+		output, err = run_git(root, { "ls-files", "--others", "--exclude-standard", "-z" })
+		if not output then
+			return nil, err
+		end
+		for name in output:gmatch("([^%z]+)%z") do
+			names[#names + 1] = name
+			untracked[name] = true
+		end
+	end
+	return { names = names, untracked = untracked }
 end
 
-local function file_hunks(root, args, name, full_diff, comparison)
+local function file_hunks(root, args, name, full_diff, comparison, untracked)
 	local command_args = { "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--no-color", "--full-index", "-U0" }
-	vim.list_extend(command_args, args)
-	vim.list_extend(command_args, { "--", name })
-	local output, err = run_git(root, command_args)
-	if not output then
-		return nil, err
+	if untracked then
+		vim.list_extend(command_args, { "--no-index", "--", "/dev/null", name })
+	else
+		vim.list_extend(command_args, args)
+		vim.list_extend(command_args, { "--", name })
 	end
+	local command = { "git" }
+	vim.list_extend(command, command_args)
+	local result = vim.system(command, { cwd = root, text = true }):wait()
+	if result.code ~= 0 and not (untracked and result.code == 1) then
+		return nil, vim.trim(result.stderr or "git command failed")
+	end
+	local output = result.stdout or ""
 	local data = vim.deepcopy(comparison)
 	data.version, data.root, data.path = 1, root, name
 	data.full_diff = full_diff
@@ -154,6 +176,9 @@ local function file_hunks(root, args, name, full_diff, comparison)
 end
 
 local function metadata(opts)
+	if opts.mode == "unstaged_with_untracked" then
+		return { base = "index", target = "worktree", include_untracked = true }
+	end
 	if opts.mode == "unstaged" then
 		return { base = "index", target = "worktree" }
 	end
@@ -255,14 +280,14 @@ function M.open(opts)
 		return nil, resolve_err
 	end
 	args = resolved
-	local names, names_err = changed_files(root, args)
-	if not names then
-		return nil, names_err
+	local files, files_err = changed_files(root, args, comparison.include_untracked)
+	if not files then
+		return nil, files_err
 	end
 
 	local items = {}
-	for _, name in ipairs(names) do
-		local hunks, hunk_err = file_hunks(root, args, name, full_diff, comparison)
+	for _, name in ipairs(files.names) do
+		local hunks, hunk_err = file_hunks(root, args, name, full_diff, comparison, files.untracked[name])
 		if not hunks then
 			return nil, hunk_err
 		end
@@ -369,6 +394,11 @@ local function install_commands()
 			return M.open({ mode = "unstaged" })
 		end)
 	end, { desc = "Quickfix: unstaged Git changes" })
+	command("QuickfixDiffsWithUntracked", function()
+		report(function()
+			return M.open({ mode = "unstaged_with_untracked" })
+		end)
+	end, { desc = "Quickfix: unstaged Git changes including untracked files" })
 	command("QuickfixDiffsFull", function()
 		report(function()
 			return M.open({ mode = "unstaged", full_diff = true })
